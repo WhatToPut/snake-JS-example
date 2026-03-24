@@ -1,99 +1,83 @@
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+window.addEventListener("DOMContentLoaded", () => {
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
 
-const grid = 20;
-let count = 0;
+  const grid = 20;
+  let snake = [{ x: 200, y: 200 }];
+  let direction = { x: grid, y: 0 };
+  let apple = randomPosition();
 
-let snake = {
-  x: 160,
-  y: 160,
-  dx: grid,
-  dy: 0,
-  cells: [],
-  maxCells: 4
-};
-
-let apple = {
-  x: 320,
-  y: 320
-};
-
-function getRandomInt(min, max) {
-  return Math.floor(Math.random() * (max - min)) + min;
-}
-
-function loop() {
-  requestAnimationFrame(loop);
-
-  if (++count < 4) return;
-  count = 0;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  snake.x += snake.dx;
-  snake.y += snake.dy;
-
-  // wrap around screen
-  if (snake.x < 0) snake.x = canvas.width - grid;
-  else if (snake.x >= canvas.width) snake.x = 0;
-
-  if (snake.y < 0) snake.y = canvas.height - grid;
-  else if (snake.y >= canvas.height) snake.y = 0;
-
-  snake.cells.unshift({ x: snake.x, y: snake.y });
-
-  if (snake.cells.length > snake.maxCells) {
-    snake.cells.pop();
+  function randomPosition() {
+    return {
+      x: Math.floor(Math.random() * 20) * grid,
+      y: Math.floor(Math.random() * 20) * grid
+    };
   }
 
-  // draw apple
-  ctx.fillStyle = "red";
-  ctx.fillRect(apple.x, apple.y, grid - 1, grid - 1);
+  function gameLoop() {
+    update();
+    draw();
+    setTimeout(gameLoop, 100); // controls speed
+  }
 
-  // draw snake
-  ctx.fillStyle = "green";
-  snake.cells.forEach(function(cell, index) {
-    ctx.fillRect(cell.x, cell.y, grid - 1, grid - 1);
+  function update() {
+    const head = {
+      x: snake[0].x + direction.x,
+      y: snake[0].y + direction.y
+    };
 
-    // snake eats apple
-    if (cell.x === apple.x && cell.y === apple.y) {
-      snake.maxCells++;
-      apple.x = getRandomInt(0, 20) * grid;
-      apple.y = getRandomInt(0, 20) * grid;
+    // wrap around
+    head.x = (head.x + canvas.width) % canvas.width;
+    head.y = (head.y + canvas.height) % canvas.height;
+
+    snake.unshift(head);
+
+    // eat apple
+    if (head.x === apple.x && head.y === apple.y) {
+      apple = randomPosition();
+    } else {
+      snake.pop();
     }
 
-    // collision with self
-    for (let i = index + 1; i < snake.cells.length; i++) {
-      if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) {
-        snake.x = 160;
-        snake.y = 160;
-        snake.cells = [];
-        snake.maxCells = 4;
-        snake.dx = grid;
-        snake.dy = 0;
-
-        apple.x = getRandomInt(0, 20) * grid;
-        apple.y = getRandomInt(0, 20) * grid;
+    // self collision
+    for (let i = 1; i < snake.length; i++) {
+      if (head.x === snake[i].x && head.y === snake[i].y) {
+        resetGame();
       }
     }
-  });
-}
-
-// controls
-document.addEventListener("keydown", function(e) {
-  if (e.key === "ArrowLeft" && snake.dx === 0) {
-    snake.dx = -grid;
-    snake.dy = 0;
-  } else if (e.key === "ArrowUp" && snake.dy === 0) {
-    snake.dy = -grid;
-    snake.dx = 0;
-  } else if (e.key === "ArrowRight" && snake.dx === 0) {
-    snake.dx = grid;
-    snake.dy = 0;
-  } else if (e.key === "ArrowDown" && snake.dy === 0) {
-    snake.dy = grid;
-    snake.dx = 0;
   }
-});
 
-requestAnimationFrame(loop);
+  function resetGame() {
+    snake = [{ x: 200, y: 200 }];
+    direction = { x: grid, y: 0 };
+    apple = randomPosition();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // apple
+    ctx.fillStyle = "red";
+    ctx.fillRect(apple.x, apple.y, grid, grid);
+
+    // snake
+    ctx.fillStyle = "green";
+    snake.forEach(segment => {
+      ctx.fillRect(segment.x, segment.y, grid, grid);
+    });
+  }
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "ArrowUp" && direction.y === 0) {
+      direction = { x: 0, y: -grid };
+    } else if (e.key === "ArrowDown" && direction.y === 0) {
+      direction = { x: 0, y: grid };
+    } else if (e.key === "ArrowLeft" && direction.x === 0) {
+      direction = { x: -grid, y: 0 };
+    } else if (e.key === "ArrowRight" && direction.x === 0) {
+      direction = { x: grid, y: 0 };
+    }
+  });
+
+  gameLoop();
+});
